@@ -1,5 +1,5 @@
 // Fonction pour démarrer le streaming
-const { WebSocket } = require('ws');
+const https = require('https');
 
 exports.handler = async (event, context) => {
   // Configuration CORS
@@ -35,7 +35,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           error: 'call_id est requis',
           example: { call_id: 'test_123', caller_id: '+33123456789' }
         })
@@ -70,27 +70,66 @@ exports.handler = async (event, context) => {
 
     // Mode production - Obtenir un vrai token AssemblyAI
     const ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
-    
+
     if (!ASSEMBLYAI_API_KEY) {
       throw new Error('Clé API AssemblyAI non configurée dans Netlify');
     }
 
-    // Obtenir un token temporaire
-    const tokenResponse = await fetch('https://api.assemblyai.com/v2/realtime/token', {
-      method: 'POST',
-      headers: {
-        'Authorization': ASSEMBLYAI_API_KEY,
-        'Content-Type': 'application/json'
+    // Fonction pour faire une requête HTTPS (remplace fetch)
+    const makeRequest = (options, postData) => {
+      return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            try {
+              resolve({
+                ok: res.statusCode >= 200 && res.statusCode < 300,
+                status: res.statusCode,
+                json: () => Promise.resolve(JSON.parse(data))
+              });
+            } catch (error) {
+              reject(error);
+            }
+          });
+        });
+        
+        req.on('error', reject);
+        
+        if (postData) {
+          req.write(postData);
+        }
+        
+        req.end();
+      });
+    };
+
+    // Obtenir un token temporaire avec https au lieu de fetch
+    const tokenResponse = await makeRequest(
+      {
+        hostname: 'api.assemblyai.com',
+        port: 443,
+        path: '/v2/realtime/token',
+        method: 'POST',
+        headers: {
+          'Authorization': ASSEMBLYAI_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
       },
-      body: JSON.stringify({ expires_in: 3600 })
-    });
+      JSON.stringify({ expires_in: 3600 })
+    );
 
     if (!tokenResponse.ok) {
       throw new Error(`Erreur AssemblyAI: ${tokenResponse.status}`);
     }
 
     const tokenData = await tokenResponse.json();
-    
+
     if (!tokenData.token) {
       throw new Error('Token AssemblyAI non reçu');
     }
@@ -121,7 +160,7 @@ exports.handler = async (event, context) => {
             call_id: call_id,
             transcription: 'TEXTE_TRANSCRIT',
             confidence: 0.95,
-            timestamp: '2025-12-28T17:00:00Z'
+            timestamp: new Date().toISOString()
           }
         }
       })
@@ -129,14 +168,13 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('❌ Erreur dans start-streaming:', error);
-    
+
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         success: false,
         error: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
         help: 'Configurez ASSEMBLYAI_API_KEY dans les variables d\'environnement Netlify'
       })
     };
