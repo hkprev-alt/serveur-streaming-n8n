@@ -1,0 +1,17 @@
+{
+  "name": "serveur-streaming-n8n",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "assemblyai": "^4.5.0",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^2.0.0",
+    "netlify-cli": "^15.0.0"
+  }
+}

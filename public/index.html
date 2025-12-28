@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎧 Vicidial Streaming Server</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        .card { background: white; border-radius: 10px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background: #00ad9f; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 10px 5px; }
+        button:hover { background: #008b7c; }
+        input { padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; width: 200px; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; overflow: auto; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🎧 Vicidial Audio Streamer</h1>
+        <p>Serveur pour streaming audio temps réel entre Vicidial et AssemblyAI</p>
+        
+        <h3>🔧 Test des Fonctions :</h3>
+        
+        <div>
+            <input type="text" id="callId" placeholder="Call ID" value="test_123">
+            <input type="text" id="callerId" placeholder="Caller ID" value="+33123456789">
+            <button onclick="startStreaming()">▶️ Démarrer Streaming</button>
+            <button onclick="testConnection()">🔗 Tester Connexion</button>
+        </div>
+        
+        <div id="result"></div>
+        
+        <h3>📡 Endpoints disponibles :</h3>
+        <ul>
+            <li><code>/.netlify/functions/start-streaming</code> - Démarrer session</li>
+            <li><code>/.netlify/functions/audio-chunk</code> - Envoyer audio</li>
+            <li><code>/.netlify/functions/sessions</code> - Liste sessions</li>
+        </ul>
+    </div>
+    
+    <script>
+        const API_BASE = '/.netlify/functions';
+        
+        async function startStreaming() {
+            const callId = document.getElementById('callId').value;
+            const callerId = document.getElementById('callerId').value;
+            
+            showMessage('⏳ Démarrage de la session...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/start-streaming`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        call_id: callId, 
+                        caller_id: callerId,
+                        test: true 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('✅ Session démarrée avec succès !', 'success');
+                    document.getElementById('result').innerHTML = 
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    showMessage('❌ Erreur: ' + (data.error || 'Inconnue'), 'error');
+                }
+                
+            } catch (error) {
+                showMessage('❌ Erreur réseau: ' + error.message, 'error');
+            }
+        }
+        
+        async function testConnection() {
+            showMessage('🔍 Test de connexion...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                const text = await response.text();
+                showMessage('✅ Serveur fonctionne !', 'success');
+            } catch (error) {
+                showMessage('❌ Serveur inaccessible', 'error');
+            }
+        }
+        
+        function showMessage(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+    </script>
+</body>
+</html>

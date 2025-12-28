@@ -1,0 +1,14 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[functions]
+  node_bundler = "esbuild"
+  
+# Ces variables seront définies plus tard dans Netlify
+[context.production.environment]
+  ASSEMBLYAI_API_KEY = "à-définir"
+  N8N_WEBHOOK_URL = "à-définir"
